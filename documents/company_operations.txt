@@ -1,0 +1,6 @@
+Grace is the director of research at Cyberdyne Systems and oversees the Genesis program.
+She receives weekly progress reports from Alice and reviews major changes to the project's scope.
+Henry is the company's compliance officer and is responsible for approving external datasets.
+Henry rejected one proposed dataset because its licensing terms were incompatible with commercial research.
+The rejected dataset had been intended for a future Genesis experiment.
+Grace asked Alice to postpone that experiment until an alternative dataset could be approved.

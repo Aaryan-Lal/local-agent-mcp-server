@@ -1,0 +1,6 @@
+Atlas is the internal object storage service used by the Genesis training infrastructure.
+It keeps encrypted copies of datasets, model checkpoints, and experiment results.
+The primary Atlas storage nodes are located in Amsterdam.
+Frank is the storage engineer responsible for maintaining Atlas and its replication system.
+Atlas replicates critical model checkpoints to a secondary facility in Dublin.
+Frank recently increased the replication frequency after a failed storage device caused several hours of downtime.

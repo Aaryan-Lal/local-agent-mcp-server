@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  graphdb:
+    image: ontotext/graphdb:10.7.0
+    container_name: my-kb-graphdb
+    restart: unless-stopped
+    ports:
+      - "7200:7200"
+    volumes:
+      - ./graphdb/data:/opt/graphdb/home
+    networks:
+      - my-kb-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7200/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  mongodb:
+    image: mongo:4.4
+    container_name: my-kb-mongodb
+    restart: unless-stopped
+    volumes:
+      - ./mongodb_data:/data/db
+    networks:
+      - my-kb-network
+    healthcheck:
+      test: ["CMD", "mongo", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  webprotege:
+    image: skyplabs/webprotege:latest
+    container_name: my-kb-webprotege
+    platform: linux/amd64  # <--- ADD THIS LINE HERE TO CHILL THE PLATFORM WARNING
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "5001:8080"
+    volumes:
+      - webprotege_data:/srv/webprotege
+      - webprotege_logs:/var/log/webprotege
+      - ./webprotege_config/webprotege.properties:/etc/webprotege/webprotege.properties:ro
+    environment:
+      MONGODB_HOST: my-kb-mongodb
+      WEBPROTEGE_APPLICATION_HOST: localhost
+      WEBPROTEGE_APPLICATION_PORT: 5001
+      WEBPROTEGE_APPLICATION_SCHEME: http
+    networks:
+      - my-kb-network
+
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: my-kb-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama/data:/root/.ollama
+    networks:
+      - my-kb-network
+
+  app:
+    build:
+      context: ./app
+    container_name: my-kb-python-app
+    restart: unless-stopped  # Keep running so you can access the webpage
+    ports:
+      - "8501:8501"          # Exposes the user interface website to your Mac
+    environment:
+      GRAPHDB_URL: http://my-kb-graphdb:7200
+      GRAPHDB_REPOSITORY: myknowledgebase
+      OLLAMA_URL: http://192.168.0.32:11434
+    volumes:
+      - ./app:/app
+      - ./ontology:/ontology
+      - ./documents:/app/documents
+      - ./storage:/app/storage
+    working_dir: /app
+    networks:
+      - my-kb-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway" 
+    command: streamlit run gui.py --server.address=0.0.0.0 # Launches the browser interface
+
+
+
+
+networks:
+  my-kb-network:
+    driver: bridge
+
+volumes:
+  webprotege_data:
+  webprotege_logs:

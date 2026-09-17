@@ -1,0 +1,13 @@
+.venv/
+venv/
+env/
+ENV/
+.ollama/
+ollama/
+# Runtime / generated data
+mongodb_data/
+graphdb/data/
+storage/
+.DS_Store
+__pycache__/
+*.pyc

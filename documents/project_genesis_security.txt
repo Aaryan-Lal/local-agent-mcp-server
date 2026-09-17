@@ -1,0 +1,6 @@
+Eve is the security architect responsible for reviewing access to Project Genesis.
+She requires all engineers working on the initiative to use hardware security keys.
+Project Genesis has a separate authentication service called Sentinel.
+Sentinel records every successful and failed attempt to access Genesis resources.
+Eve recently discovered that several service accounts had unnecessarily broad permissions.
+She asked Bob to restrict those accounts to the minimum resources required for their jobs.

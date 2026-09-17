@@ -1,0 +1,6 @@
+Carol is the principal machine learning engineer assigned to Project Genesis.
+She works closely with Alice on the architecture of the project's neural network models.
+Carol recently proposed using a mixture-of-experts architecture to reduce inference costs.
+The training pipeline is maintained by Dave, a machine learning platform engineer.
+Dave built an internal system that automatically starts training jobs when new datasets are approved.
+The system stores model checkpoints in an encrypted object storage service called Atlas.

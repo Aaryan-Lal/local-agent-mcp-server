@@ -1,0 +1,4 @@
+Alice is a lead data scientist at Cyberdyne Systems. 
+She is currently managing Project Genesis, a highly confidential AI initiative.
+Project Genesis relies entirely on a massive MongoDB cluster hosted in Frankfurt.
+Bob is the infrastructure engineer who maintains this Frankfurt server cluster.

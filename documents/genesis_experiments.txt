@@ -1,0 +1,6 @@
+The Genesis team recently completed an experiment called Aurora.
+Aurora tested whether a smaller model could achieve similar accuracy to the project's current prototype.
+Carol designed the model architecture used in the experiment.
+Dave configured the automated training jobs and stored their checkpoints in Atlas.
+The experiment produced promising results but required substantially more training data.
+Alice approved a new dataset collection effort to address this limitation.
