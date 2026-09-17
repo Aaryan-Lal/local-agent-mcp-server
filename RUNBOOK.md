@@ -5,8 +5,10 @@ Follow these steps sequentially in **VS Code** to initialize the environment:
 ### Step 1: Spin Up Containers
 Open a terminal inside the workspace directory and execute:
 ```bash
-docker compose up -d graphdb mongodb webprotege ollama
+docker compose up -d graphdb ollama
 ```
+
+`mongodb`/`webprotege` are only needed for ontology design work in WebProtégé — skip them for ingestion/querying to leave more RAM for Ollama. Start them separately (`docker compose up -d mongodb webprotege`) only when you actually need the WebProtégé UI. On machines with limited RAM (e.g. 16-18GB), running all four services plus Ollama's model at once can starve Ollama's `llama-server` process and cause it to be OOM-killed mid-request.
 
 ### Step 2: Download AI Model Weights (Free & Local)
 Run the following commands to download the models into the local Ollama volume storage:

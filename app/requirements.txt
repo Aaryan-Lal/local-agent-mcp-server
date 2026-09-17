@@ -4,3 +4,4 @@ llama-index-embeddings-ollama
 streamlit
 mcp
 ollama
+requests

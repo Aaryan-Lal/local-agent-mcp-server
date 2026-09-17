@@ -28,37 +28,42 @@ See [`DESIGN.md`](./DESIGN.md) for the full architecture write-up, sequence diag
 │                      └────────────┬─────────────┘                      │
 └───────────────────────────────────│────────────────────────────────────┘
                                      │
-         ┌───────────────────────────┴───────────────────────────┐
-         ▼ (Local File Read)                                     ▼ (HTTP / Port 11434)
-┌──────────────────────────────┐                ┌──────────────────────────────┐
-│    LOCAL DATABASE STORAGE    │                │        OLLAMA SERVER         │
-│                              │                │                              │
-│   ┌──────────────────────┐   │                │   ┌──────────────────────┐   │
-│   │  ./storage directory │   │                │   │     LLM BRAIN        │   │
-│   │  - docstore.json     │   │                │   │    (llama3.1)        │   │
-│   │  - index_store.json  │   │                │   └──────────────────────┘   │
-│   └──────────────────────┘   │                └──────────────────────────────┘
+         ┌───────────────────────────┼───────────────────────────┐
+         ▼ (Local File Read)         ▼ (SPARQL / Port 7200)      ▼ (HTTP / Port 11434)
+┌──────────────────────────────┐  ┌──────────────────────┐  ┌──────────────────────────────┐
+│    LOCAL DATABASE STORAGE    │  │  ONTOTEXT GRAPHDB     │  │        OLLAMA SERVER         │
+│   ┌──────────────────────┐   │  │  repo: myknowledgebase│  │   ┌──────────────────────┐   │
+│   │  ./storage directory │   │  │  entities & relations │  │   │     LLM BRAIN        │   │
+│   │  - docstore.json     │   │  │  (RDF triples)        │  │   │    (llama3.1)        │   │
+│   │  - index_store.json  │   │  └──────────────────────┘  │   └──────────────────────┘   │
+│   └──────────────────────┘   │                             └──────────────────────────────┘
 └──────────────────────────────┘
 ```
+
+`search_knowledge_graph` is a **hybrid** tool: it queries the vector index (semantic similarity) and GraphDB (structural relationships) on every call and merges both into one answer. See [`DESIGN.md`](./DESIGN.md#hybrid-retrieval-how-triples-reach-graphdb) for why, and for the guardrails around it (SPARQL-injection escaping, tool-call error handling, output validation).
 
 ## Components
 
 | Piece | Role | File |
 |---|---|---|
 | Streamlit UI | User-facing chat input | `app/gui.py` |
-| Agent (brain + loop) | Decides tool calls, drives the reasoning loop | `app/agent_orchestrator.py` (`AgenticWorkspace`) |
-| MCP server (hand) | Exposes the knowledge base as a callable tool | `app/knowledge_server.py` |
-| Ingestion | Builds the GraphRAG index from `./documents` into `./storage` | `app/main.py` |
+| Agent (brain + loop) | Decides tool calls, drives the reasoning loop, validates output | `app/agent_orchestrator.py` (`AgenticWorkspace`) |
+| MCP server (hand) | Hybrid retrieval tool: vector search + GraphDB SPARQL | `app/knowledge_server.py` |
+| Ingestion | Builds the vector/graph index from `./documents`, pushes triples into GraphDB | `app/main.py` |
+| Shared helpers | URI/SPARQL utilities, incl. injection-safe escaping | `app/graphdb_utils.py` |
 | Ollama | Local LLM (`llama3.1`) + embeddings (`nomic-embed-text`) | `docker-compose.yml` |
-| GraphDB / WebProtégé | Provisioned for a real RDF triple store & ontology design; not yet wired into the pipeline (see `DESIGN.md`) | `docker-compose.yml` |
+| GraphDB | Real RDF triple store holding extracted entities/relationships | `docker-compose.yml` |
+| WebProtégé | Provisioned for ontology design; not yet wired into the pipeline (see `DESIGN.md`) | `docker-compose.yml` |
 
 ## Quick start
 
 **1. Start the supporting services:**
 
 ```bash
-docker compose up -d graphdb mongodb webprotege ollama
+docker compose up -d graphdb ollama
 ```
+
+`mongodb`/`webprotege` are only needed for ontology design in WebProtégé and aren't used by ingestion or querying — skip them unless you're using that UI, especially on lower-RAM machines (running all four services plus Ollama's model can OOM-kill Ollama's `llama-server`; `docker-compose.yml` also caps GraphDB's JVM heap to 1GB to leave Ollama more headroom).
 
 **2. Pull the model weights into Ollama:**
 
@@ -81,7 +86,7 @@ Drop text files into `./documents/`, then run:
 docker compose run app python main.py
 ```
 
-This populates `./storage` with the persisted GraphRAG index.
+This populates `./storage` with the persisted vector/graph index, and pushes the extracted entities/relationships into GraphDB as RDF triples (viewable via GraphDB's workbench at `http://localhost:7200`).
 
 **5. Launch the agent:**
 
@@ -100,9 +105,10 @@ Open `http://localhost:8501` and ask a question. The agent will decide whether t
 
 ```
 app/
-├── main.py                # Ingestion pipeline
-├── knowledge_server.py    # MCP server (the hand)
-├── agent_orchestrator.py  # AgenticWorkspace (the brain + loop)
+├── main.py                # Ingestion pipeline (builds index, pushes triples to GraphDB)
+├── knowledge_server.py    # MCP server (the hand): hybrid vector + GraphDB search
+├── agent_orchestrator.py  # AgenticWorkspace (the brain + loop), with guardrails
+├── graphdb_utils.py        # Shared SPARQL/URI helpers (incl. injection escaping)
 ├── gui.py                 # Streamlit UI
 ├── requirements.txt
 └── Dockerfile
