@@ -33,5 +33,10 @@ docker exec -it my-kb-ollama ollama pull nomic-embed-text
 1. Add text files or PDFs to the `./documents/` folder.
 2. Trigger the automated Python extraction engine:
 ```bash
-docker compose up app --build
+docker compose run app python main.py
+```
+
+If you see `Error response from daemon: Conflict. The container name "..." is already in use`, an old container was left behind by a previous run. Clean it up first, then retry:
+```bash
+docker compose down --remove-orphans
 ```

@@ -72,7 +72,6 @@ services:
   app:
     build:
       context: ./app
-    container_name: my-kb-python-app
     restart: unless-stopped  # Keep running so you can access the webpage
     ports:
       - "8501:8501"          # Exposes the user interface website to your Mac

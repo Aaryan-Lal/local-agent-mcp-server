@@ -96,6 +96,8 @@ docker compose up app --build
 
 Open `http://localhost:8501` and ask a question. The agent will decide whether to call `search_knowledge_graph` against your documents or answer directly.
 
+**Troubleshooting:** if `docker compose run`/`up` fails with `Conflict. The container name "..." is already in use`, a previous container was left behind. Run `docker compose down --remove-orphans` and retry.
+
 ## Configuration
 
 - `OLLAMA_URL` (set in `docker-compose.yml`) — where the `app` container reaches Ollama. Defaults to a LAN IP for a natively-running Ollama app (for GPU acceleration); point it at `http://my-kb-ollama:11434` to use the containerized Ollama service instead.
