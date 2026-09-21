@@ -17,14 +17,14 @@ from graphdb_utils import RESOURCE_NS, RELATION_NS, RDFS_NS, to_uri, escape_spar
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
 GRAPHDB_URL = os.environ.get("GRAPHDB_URL", "http://localhost:7200")
 GRAPHDB_REPOSITORY = os.environ.get("GRAPHDB_REPOSITORY", "myknowledgebase")
 
 
 print(f"🤖 [1/5] Connecting to Local Ollama Models at {OLLAMA_URL}...")
 
-local_llm = Ollama(model="llama3.1", base_url=OLLAMA_URL, request_timeout=600.0)
+local_llm = Ollama(model="llama3.1", base_url=OLLAMA_URL, request_timeout=600.0, context_window=4096,)
 local_embed = OllamaEmbedding(model_name="nomic-embed-text", base_url=OLLAMA_URL)
 
 Settings.llm = local_llm
@@ -55,35 +55,54 @@ print(f"💾 Knowledge base successfully compiled and saved to '{PERSIST_DIR}'!"
 
 
 def push_triplets_to_graphdb(graph_store, graphdb_url: str, repository: str) -> None:
-    """Push extracted (subject, relation, object) triples into GraphDB as real RDF,
-    so the knowledge graph is queryable via SPARQL, not just LlamaIndex's local file."""
-    rel_map = graph_store.get_rel_map(subjs=None, depth=1, limit=10000)
+    """Push extracted (subject, relation, object) triples into GraphDB as real RDF."""
+
+    rel_map = graph_store.get_rel_map(
+        subjs=None,
+        depth=1,
+        limit=10000,
+    )
+
     triples = [
-        (subj, rel, obj)
-        for subj, rel_obj_pairs in rel_map.items()
-        for rel, obj in rel_obj_pairs
+        tuple(triple)
+        for triples_for_subject in rel_map.values()
+        for triple in triples_for_subject
+        if len(triple) == 3
     ]
 
     if not triples:
         print("⚠️  No triplets were extracted; skipping GraphDB push.")
         return
 
+    print(f"📊 Preparing {len(triples)} triples for GraphDB...")
+
     statements = []
     labeled_uris = set()
+
     for subj, rel, obj in triples:
         subj_uri = to_uri(RESOURCE_NS, subj)
         obj_uri = to_uri(RESOURCE_NS, obj)
         rel_uri = to_uri(RELATION_NS, rel)
-        statements.append(f"{subj_uri} {rel_uri} {obj_uri} .")
 
-        for node_uri, label in ((subj_uri, subj), (obj_uri, obj)):
+        statements.append(
+            f"{subj_uri} {rel_uri} {obj_uri} ."
+        )
+
+        for node_uri, label in (
+            (subj_uri, subj),
+            (obj_uri, obj),
+        ):
             if node_uri not in labeled_uris:
-                statements.append(f'{node_uri} rdfs:label "{escape_sparql_literal(label)}" .')
+                statements.append(
+                    f'{node_uri} rdfs:label "{escape_sparql_literal(label)}" .'
+                )
                 labeled_uris.add(node_uri)
 
     update_query = (
         f"PREFIX rdfs: <{RDFS_NS}>\n"
-        "INSERT DATA {\n" + "\n".join(statements) + "\n}"
+        "INSERT DATA {\n"
+        + "\n".join(statements)
+        + "\n}"
     )
 
     response = requests.post(
@@ -91,8 +110,13 @@ def push_triplets_to_graphdb(graph_store, graphdb_url: str, repository: str) -> 
         data={"update": update_query},
         timeout=60,
     )
+
     response.raise_for_status()
-    print(f"🔗 Pushed {len(triples)} triples into GraphDB repository '{repository}'.")
+
+    print(
+        f"🔗 Pushed {len(triples)} triples into "
+        f"GraphDB repository '{repository}'."
+    )
 
 
 print(f"🔗 [5/5] Pushing extracted triples into GraphDB at {GRAPHDB_URL}...")

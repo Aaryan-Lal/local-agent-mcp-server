@@ -2,6 +2,6 @@ llama-index
 llama-index-llms-ollama
 llama-index-embeddings-ollama
 streamlit
-mcp
+mcp<2
 ollama
 requests
